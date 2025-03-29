@@ -109,9 +109,7 @@ class RecommendationService {
       const credential = new DefaultAzureCredential();
       
       // Format the scope correctly based on the endpoint URL
-      const scope = this.resource.endsWith('/') 
-        ? `${this.resource}.default`
-        : `${this.resource}/.default`;
+      const scope = "https://cognitiveservices.azure.com/.default";
       
       logger.info(`Requesting token with scope: ${scope}`);
       const accessToken = await credential.getToken(scope);
