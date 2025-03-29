@@ -109,12 +109,69 @@ class RecommendationService {
     }
 
     try {
+      logger.info('Attempting to acquire token with these parameters:', {
+        clientId: this.clientId ? `${this.clientId.substring(0, 5)}...` : 'Not configured',
+        tenantId: this.tenantId ? `${this.tenantId.substring(0, 5)}...` : 'Not configured',
+        resource: this.resource ? `${this.resource}` : 'Not configured',
+        authority: this.tenantId ? `https://login.microsoftonline.com/${this.tenantId.substring(0, 5)}...` : 'Not configured',
+      });
+      
+      const startTime = performance.now();
       const result = await this.msalClient.acquireTokenByClientCredential({
         scopes: [`${this.resource}/.default`],
       });
+      const endTime = performance.now();
+      const tokenDuration = endTime - startTime;
+      
+      // Log token information with sensitive parts redacted
+      if (result && result.accessToken) {
+        const tokenLength = result.accessToken.length;
+        const tokenPreview = `${result.accessToken.substring(0, 6)}...${result.accessToken.substring(tokenLength - 6)}`;
+        
+        logger.success(`Successfully acquired access token in ${tokenDuration.toFixed(2)}ms: ${tokenPreview} (${tokenLength} chars)`, {
+          tokenType: result.tokenType,
+          expiresOn: result.expiresOn,
+          scopes: result.scopes
+        });
+        
+        // Try to decode the JWT to validate its contents
+        try {
+          const tokenParts = result.accessToken.split('.');
+          if (tokenParts.length === 3) {
+            const headerB64 = tokenParts[0];
+            const payloadB64 = tokenParts[1];
+            
+            // Decode payload (base64)
+            const payload = JSON.parse(Buffer.from(payloadB64, 'base64').toString());
+            
+            // Log select fields from the token payload for validation
+            logger.info('Token payload information:', {
+              aud: payload.aud,
+              iss: payload.iss ? `${payload.iss.substring(0, 20)}...` : 'Not found',
+              exp: payload.exp ? new Date(payload.exp * 1000).toISOString() : 'Not found',
+              iat: payload.iat ? new Date(payload.iat * 1000).toISOString() : 'Not found',
+              roles: payload.roles || 'None',
+              scp: payload.scp || 'None',
+            });
+          }
+        } catch (decodeError) {
+          logger.warn('Could not decode token for validation:', decodeError);
+        }
+      } else {
+        logger.warn('Token acquired but has unexpected format or missing fields');
+      }
+      
       return result.accessToken;
     } catch (error) {
       logger.error('Failed to acquire token using Workload Identity:', error);
+      // More detailed error logging
+      if (error.errorCode) {
+        logger.error(`MSAL Error Code: ${error.errorCode}`, {
+          errorMessage: error.errorMessage,
+          subError: error.subError,
+          correlationId: error.correlationId,
+        });
+      }
       throw error;
     }
   }
