@@ -15,7 +15,9 @@ The project is organized into two main folders:
 To install all dependencies for both frontend and backend:
 
 ```bash
-npm install
+npm install && \
+    npm install --prefix frontend && \
+    npm install --prefix backend
 ```
 
 ### Development
