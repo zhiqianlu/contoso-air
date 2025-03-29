@@ -4,7 +4,7 @@ FROM node:20 AS builder
 # Set the working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json files for all components
+# Copy package.json files for all components
 COPY package*.json ./
 COPY frontend/package*.json ./frontend/
 COPY backend/package*.json ./backend/
@@ -26,9 +26,9 @@ FROM node:20-slim AS runtime
 # Set the working directory
 WORKDIR /app
 
-# Copy package.json files
-COPY package*.json ./
-COPY backend/package*.json ./backend/
+# Copy package.json files - they definitely exist
+COPY package.json ./
+COPY backend/package.json ./backend/
 
 # Install only production dependencies
 RUN npm install --only=production && \
@@ -36,8 +36,6 @@ RUN npm install --only=production && \
 
 # Copy built application from builder stage
 COPY --from=builder /app/backend ./backend
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/package-lock.json ./package-lock.json
 
 # Create a non-root user and set permissions
 RUN useradd -m appuser && chown -R appuser /app
