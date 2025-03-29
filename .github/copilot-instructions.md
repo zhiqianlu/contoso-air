@@ -5,7 +5,8 @@ This is a Vite + React project. Please ensure that suggestions align with the Re
 Dockerfile generation:
 * Use the latest stable Node.js image as the base image for building based on the node engine spec in the package.json
 * Use a smaller image for the runtime stage in multi-stage builds
-* Generate .dockerignore to exclude unnecessary files from the build context but be careful not exclude important files. Don't overwrite my .dockerignore.
+* Generate .dockerignore to exclude unnecessary files from the build context but be careful not exclude important files.
+* DO NOT CHANGE my .dockerignore.
 * If there are multiple package.json files, prioritize the one in the root. Don't build individual package.json files. Assume the root package.json file knows how to build the app.
 * Use `npm run build` for building, and `npm start` for running the app
 * Use `npm install` to install dependencies
