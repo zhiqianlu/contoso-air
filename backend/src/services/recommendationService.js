@@ -4,7 +4,7 @@ import { fileURLToPath } from 'url';
 import path from 'path';
 import dotenv from 'dotenv';
 import logger from './logger.js';
-import { ConfidentialClientApplication } from '@azure/msal-node';
+import { DefaultAzureCredential } from '@azure/identity';
 
 // Load environment variables
 dotenv.config();
@@ -86,20 +86,13 @@ class RecommendationService {
     
     // Azure AD Workload Identity configuration
     this.tenantId = process.env.AZURE_TENANT_ID || '';
-    this.clientId = process.env.AZURE_CLIENT_ID || '';
+    this.clientId = process.env.AZURE_OPENAI_CLIENTID || '';
     this.clientSecret = process.env.AZURE_CLIENT_SECRET || '';
-    this.resource = process.env.AZURE_OPENAI_RESOURCE || '';
-    this.useWorkloadIdentity = !this.apiKey && this.tenantId && this.clientId && this.clientSecret && this.resource;
+    this.resource = process.env.AZURE_OPENAI_ENDPOINT || '';
+    this.useWorkloadIdentity = !this.apiKey && this.resource;
 
     if (this.useWorkloadIdentity) {
-      this.msalClient = new ConfidentialClientApplication({
-        auth: {
-          clientId: this.clientId,
-          authority: `https://login.microsoftonline.com/${this.tenantId}`,
-          clientSecret: this.clientSecret,
-        },
-      });
-      logger.info('Using Azure AD Workload Identity for authentication');
+      logger.info('Using Azure AD Workload Identity with DefaultAzureCredential for authentication');
     }
   }
 
@@ -109,69 +102,36 @@ class RecommendationService {
     }
 
     try {
-      logger.info('Attempting to acquire token with these parameters:', {
-        clientId: this.clientId ? `${this.clientId.substring(0, 5)}...` : 'Not configured',
-        tenantId: this.tenantId ? `${this.tenantId.substring(0, 5)}...` : 'Not configured',
-        resource: this.resource ? `${this.resource}` : 'Not configured',
-        authority: this.tenantId ? `https://login.microsoftonline.com/${this.tenantId.substring(0, 5)}...` : 'Not configured',
-      });
+      logger.info('Attempting to acquire token using DefaultAzureCredential');
       
       const startTime = performance.now();
-      const result = await this.msalClient.acquireTokenByClientCredential({
-        scopes: [`${this.resource}/.default`],
-      });
+      // Get token using DefaultAzureCredential
+      const credential = new DefaultAzureCredential();
+      
+      // Format the scope correctly based on the endpoint URL
+      const scope = this.resource.endsWith('/') 
+        ? `${this.resource}.default`
+        : `${this.resource}/.default`;
+      
+      logger.info(`Requesting token with scope: ${scope}`);
+      const accessToken = await credential.getToken(scope);
+      
       const endTime = performance.now();
       const tokenDuration = endTime - startTime;
       
-      // Log token information with sensitive parts redacted
-      if (result && result.accessToken) {
-        const tokenLength = result.accessToken.length;
-        const tokenPreview = `${result.accessToken.substring(0, 6)}...${result.accessToken.substring(tokenLength - 6)}`;
+      if (accessToken && accessToken.token) {
+        const tokenLength = accessToken.token.length;
+        const tokenPreview = `${accessToken.token.substring(0, 6)}...${accessToken.token.substring(tokenLength - 6)}`;
         
-        logger.success(`Successfully acquired access token in ${tokenDuration.toFixed(2)}ms: ${tokenPreview} (${tokenLength} chars)`, {
-          tokenType: result.tokenType,
-          expiresOn: result.expiresOn,
-          scopes: result.scopes
-        });
+        logger.success(`Successfully acquired access token in ${tokenDuration.toFixed(2)}ms: ${tokenPreview} (${tokenLength} chars)`);
         
-        // Try to decode the JWT to validate its contents
-        try {
-          const tokenParts = result.accessToken.split('.');
-          if (tokenParts.length === 3) {
-            const headerB64 = tokenParts[0];
-            const payloadB64 = tokenParts[1];
-            
-            // Decode payload (base64)
-            const payload = JSON.parse(Buffer.from(payloadB64, 'base64').toString());
-            
-            // Log select fields from the token payload for validation
-            logger.info('Token payload information:', {
-              aud: payload.aud,
-              iss: payload.iss ? `${payload.iss.substring(0, 20)}...` : 'Not found',
-              exp: payload.exp ? new Date(payload.exp * 1000).toISOString() : 'Not found',
-              iat: payload.iat ? new Date(payload.iat * 1000).toISOString() : 'Not found',
-              roles: payload.roles || 'None',
-              scp: payload.scp || 'None',
-            });
-          }
-        } catch (decodeError) {
-          logger.warn('Could not decode token for validation:', decodeError);
-        }
+        return accessToken.token;
       } else {
         logger.warn('Token acquired but has unexpected format or missing fields');
+        throw new Error('Invalid token format received from DefaultAzureCredential');
       }
-      
-      return result.accessToken;
     } catch (error) {
-      logger.error('Failed to acquire token using Workload Identity:', error);
-      // More detailed error logging
-      if (error.errorCode) {
-        logger.error(`MSAL Error Code: ${error.errorCode}`, {
-          errorMessage: error.errorMessage,
-          subError: error.subError,
-          correlationId: error.correlationId,
-        });
-      }
+      logger.error('Failed to acquire token using DefaultAzureCredential:', error);
       throw error;
     }
   }
