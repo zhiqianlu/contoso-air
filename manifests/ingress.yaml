@@ -20,7 +20,7 @@ spec:
               service:
                 name: "contosoair"
                 port:
-                  number: 3000
+                  number: 3001
             path: "/"
             pathType: Prefix
   tls:
