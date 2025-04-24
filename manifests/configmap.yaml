@@ -1,8 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: contosoair-config
-  namespace: contosoair
-  labels:
-    app.kubernetes.io/name: contosoair
-    kubernetes.azure.com/generator: devhub
