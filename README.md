@@ -53,8 +53,6 @@ npm run start
 - **`npm run dev`**: Starts the backend server in development mode using Nodemon.
 - **`npm run start`**: Starts the backend server in production mode.
 
-
-
 ## Prometheus Metrics
 This application integrates Prometheus metrics to monitor performance and usage.
 
