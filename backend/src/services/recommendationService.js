@@ -13,11 +13,53 @@ import { DefaultAzureCredential } from '@azure/identity';
  */
 class RecommendationService {
   constructor() {
-    // TODO: Implement the constructor
+    // Initialize Azure OpenAI configuration
+    this.endpoint = process.env.AZURE_OPENAI_ENDPOINT;
+    this.deploymentId = process.env.AZURE_OPENAI_DEPLOYMENT;
+    this.apiVersion = process.env.AZURE_OPENAI_API_VERSION || '2023-05-15';
+    this.apiKey = process.env.AZURE_OPENAI_API_KEY;
+    this.clientId = process.env.AZURE_OPENAI_CLIENTID;
+    
+    // Use workload identity if client ID is provided
+    this.useWorkloadIdentity = Boolean(this.clientId);
+    
+    // Request queue for rate limiting
+    this.requestQueue = [];
+    this.activeRequests = 0;
+    this.maxConcurrentRequests = parseInt(process.env.MAX_CONCURRENT_REQUESTS || '5', 10);
+    
+    // Caching for embeddings
+    this.embeddingCache = new Map();
+    this.maxCacheSize = parseInt(process.env.MAX_CACHE_SIZE || '1000', 10);
+    
+    if (this.useWorkloadIdentity) {
+      logger.info('Using Workload Identity authentication for Azure OpenAI');
+    } else if (this.apiKey) {
+      logger.info('Using API Key authentication for Azure OpenAI');
+    } else {
+      logger.warn('No authentication method configured for Azure OpenAI');
+    }
   }
 
   async getAccessToken() {
-    // TODO: Implement the method to get access token using Workload Identity using the DefaultAzureCredential
+    if (!this.useWorkloadIdentity) {
+      return null;
+    }
+
+    try {
+      // Create credential object using Azure Identity library
+      const credential = new DefaultAzureCredential();
+      
+      // Get access token for Azure OpenAI scope
+      const scope = 'https://cognitiveservices.azure.com/.default';
+      const tokenResponse = await credential.getToken(scope);
+      
+      logger.debug('Successfully obtained access token using Workload Identity');
+      return tokenResponse.token;
+    } catch (error) {
+      logger.error('Error getting access token:', error);
+      throw new Error(`Failed to get access token: ${error.message}`);
+    }
   }
 
   
@@ -27,7 +69,104 @@ class RecommendationService {
    * @returns {Promise<Array<number>>} - Vector embedding of the text
    */
   async generateEmbedding(text) {
-    // TODO: Implement the method to generate embeddings using Azure OpenAI
+    // Check if the text is empty
+    if (!text || text.trim() === '') {
+      throw new Error('Cannot generate embedding for empty text');
+    }
+
+    // Check for cached embedding
+    const cacheKey = this.getCacheKey(text);
+    if (this.embeddingCache.has(cacheKey)) {
+      logger.debug('Using cached embedding for text');
+      return this.embeddingCache.get(cacheKey);
+    }
+
+    // Function to execute the API call
+    const executeEmbeddingRequest = async (retryCount = 0) => {
+      try {
+        // Set up authentication headers
+        const headers = {
+          'Content-Type': 'application/json'
+        };
+
+        // Use appropriate authentication method
+        if (this.useWorkloadIdentity) {
+          const token = await this.getAccessToken();
+          headers['Authorization'] = `Bearer ${token}`;
+        } else if (this.apiKey) {
+          headers['api-key'] = this.apiKey;
+        } else {
+          throw new Error('No authentication method available for Azure OpenAI');
+        }
+
+        // Prepare the request URL
+        const url = `${this.endpoint}/openai/deployments/${this.deploymentId}/embeddings?api-version=${this.apiVersion}`;
+        
+        // Prepare the request body
+        const body = JSON.stringify({
+          input: text,
+          user: 'contoso-air-recommendation-service'
+        });
+
+        // Make the request with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers,
+          body,
+          signal: controller.signal
+        });
+        
+        clearTimeout(timeoutId);
+
+        // Handle HTTP errors
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          logger.error(`Azure OpenAI API error: ${response.status} ${response.statusText}`, errorData);
+
+          // Handle rate limiting
+          if (response.status === 429) {
+            if (retryCount < MAX_RETRIES) {
+              logger.warn(`Rate limited by Azure OpenAI API. Retrying in ${RETRY_DELAY_MS}ms...`);
+              await sleep(RATE_LIMIT_DELAY_MS);
+              return executeEmbeddingRequest(retryCount + 1);
+            }
+            throw new Error('Azure OpenAI API rate limit exceeded maximum retries');
+          }
+
+          throw new Error(`Azure OpenAI API error: ${response.status} ${response.statusText}`);
+        }
+
+        // Parse the response
+        const data = await response.json();
+        const embedding = data.data[0].embedding;
+
+        // Cache the result
+        if (this.embeddingCache.size >= this.maxCacheSize) {
+          // Remove oldest entry if cache is full
+          const firstKey = this.embeddingCache.keys().next().value;
+          this.embeddingCache.delete(firstKey);
+        }
+        this.embeddingCache.set(cacheKey, embedding);
+
+        return embedding;
+      } catch (error) {
+        // Handle timeout or network errors with retries
+        if (error.name === 'AbortError' || error.name === 'FetchError') {
+          if (retryCount < MAX_RETRIES) {
+            logger.warn(`Request failed. Retrying in ${RETRY_DELAY_MS}ms...`, error);
+            await sleep(RETRY_DELAY_MS);
+            return executeEmbeddingRequest(retryCount + 1);
+          }
+        }
+        throw error;
+      }
+    };
+
+    // Use rate limiting queue to manage concurrent requests
+    return this.enqueueRequest(() => executeEmbeddingRequest());
   }
 
   /**
@@ -37,7 +176,59 @@ class RecommendationService {
    * @returns {Promise<Array<Object>>} - Array of destination recommendations with similarity scores
    */
   async getRecommendation(userInput, limit = 5) {
-    // TODO: Implement the method to get recommendations
+    if (!userInput || userInput.trim() === '') {
+      throw new Error('User input cannot be empty');
+    }
+    
+    if (!this.isReady()) {
+      throw new Error('Recommendation service is not properly configured');
+    }
+    
+    try {
+      logger.info(`Generating recommendations for user input: "${userInput}"`);
+      
+      // Generate embedding for user input
+      const userEmbedding = await this.generateEmbedding(userInput);
+      
+      // Calculate similarities with all destinations
+      const recommendations = await Promise.all(
+        destinations.map(async (destination) => {
+          let destinationEmbedding;
+          
+          // Try to use pre-computed embeddings if available
+          if (destinationEmbeddings[destination.id]) {
+            destinationEmbedding = destinationEmbeddings[destination.id];
+          } else {
+            // Generate embedding for the destination description
+            const descriptionText = `${destination.name}: ${destination.description}. Features: ${destination.features.join(', ')}`;
+            destinationEmbedding = await this.generateEmbedding(descriptionText);
+            
+            // Store the generated embedding for future use
+            destinationEmbeddings[destination.id] = destinationEmbedding;
+          }
+          
+          // Calculate similarity between user input and destination
+          const similarity = this.cosineSimilarity(userEmbedding, destinationEmbedding);
+          
+          return {
+            ...destination,
+            similarity
+          };
+        })
+      );
+      
+      // Sort by similarity (highest first) and limit results
+      const topRecommendations = recommendations
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, limit);
+      
+      logger.info(`Generated ${topRecommendations.length} recommendations for user input`);
+      
+      return topRecommendations;
+    } catch (error) {
+      logger.error('Error generating recommendations:', error);
+      throw new Error(`Failed to generate recommendations: ${error.message}`);
+    }
   }
 
 
