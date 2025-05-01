@@ -42,6 +42,24 @@ Start the backend server (ensure the frontend is built first).
 npm run start
 ```
 
+### Docker
+
+You can also run the application using Docker:
+
+#### Building the Docker Image
+
+```bash
+docker build -t contoso-air .
+```
+
+#### Running the Docker Container
+
+```bash
+docker run -p 3001:3001 contoso-air
+```
+
+This will start the application and expose it on port 3001. You can access the application by navigating to `http://localhost:3001` in your browser.
+
 ### Frontend Scripts
 
 - **`npm run dev`**: Starts the Vite development server for the React frontend.
