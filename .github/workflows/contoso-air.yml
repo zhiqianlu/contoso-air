@@ -44,7 +44,7 @@ env:
   CLUSTER_NAME: automatic
   CLUSTER_RESOURCE_GROUP: automatic-rg
   CLUSTER_RESOURCE_TYPE: Microsoft.ContainerService/managedClusters
-  DEPLOYMENT_MANIFEST_PATH: .
+  DEPLOYMENT_MANIFEST_PATH: ./manifests
   DOCKER_FILE: ./Dockerfile
   BUILD_CONTEXT_PATH: ./
   NAMESPACE: contosoair
