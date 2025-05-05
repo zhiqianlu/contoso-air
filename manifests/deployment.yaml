@@ -16,6 +16,7 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: contoso-air
+        # azure.workload.identity/use: "true"  # ← Uncomment if using Azure Workload Identity
     spec:
       containers:
         - name: contoso-air
@@ -76,12 +77,12 @@ spec:
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              topologyKey: kubernetes.io/hostname
-              labelSelector:
-                matchLabels:
-                  app.kubernetes.io/name: contoso-air
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: contoso-air
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
