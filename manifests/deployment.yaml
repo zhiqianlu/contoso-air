@@ -14,14 +14,10 @@ spec:
   template:
     metadata:
       labels:
-        # ⚠️ This label enables Azure Workload Identity — requires Service Connector + identity setup
-        # Comment it out if you're not using workload identity
-        # azure.workload.identity/use: "true"
         app.kubernetes.io/name: contoso-air
+        # azure.workload.identity/use: "true"  # ← Uncomment if using Azure Workload Identity
     spec:
-      # ⚠️ This is required for Azure Workload Identity. If not configured, pod creation will fail.
-      # Comment this out if not using identity features
-      # serviceAccountName: sc-account-55e6584a-e547-4e50-a54c-13dfb0d0d317
+      # serviceAccountName: sc-account-55e6584a-e547-4e50-a54c-13dfb0d0d317  # ← Uncomment if using Service Connector / Workload Identity
       containers:
         - name: contoso-air
           image: registry1738910064968.azurecr.io/contosoair:latest
@@ -36,12 +32,9 @@ spec:
               cpu: "1"
               memory: "1Gi"
           envFrom:
-            # ⚠️ If this ConfigMap doesn't exist, pod creation will fail.
-            # Either make sure it exists or mark it optional
             - configMapRef:
                 name: contoso-air-config
-                # optional: true  # <- Add this if you're not sure the config exists
-            # ✅ This one is already optional, so safe
+                optional: true  # ← Marked optional to prevent crash if missing
             - secretRef:
                 name: sc-openai4ad46-secret
                 optional: true
@@ -88,12 +81,12 @@ spec:
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            podAffinityTerm:
-              topologyKey: kubernetes.io/hostname
-              labelSelector:
-                matchLabels:
-                  app.kubernetes.io/name: contoso-air
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: contoso-air
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
