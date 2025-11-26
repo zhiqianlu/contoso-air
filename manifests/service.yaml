@@ -1,16 +1,16 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: zqflow
+  name: zqwf01
   namespace: default
   labels:
-    app.kubernetes.io/name: zqflow
+    app.kubernetes.io/name: zqwf01
     kubernetes.azure.com/generator: devhub
 spec:
   type: LoadBalancer
   selector:
-    app.kubernetes.io/name: zqflow
+    app.kubernetes.io/name: zqwf01
   ports:
     - protocol: TCP
-      port: 80
-      targetPort: 80
+      port: 8000
+      targetPort: 8000
