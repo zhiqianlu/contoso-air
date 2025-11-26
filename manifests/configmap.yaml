@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zqflow-config
+  namespace: default
+  labels:
+    app.kubernetes.io/name: zqflow
+    kubernetes.azure.com/generator: devhub
+data:
