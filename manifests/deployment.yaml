@@ -1,27 +1,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: zqflow
+  name: zqwf01
   labels:
-    app.kubernetes.io/name: zqflow
+    app.kubernetes.io/name: zqwf01
     kubernetes.azure.com/generator: devhub
   namespace: default
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: zqflow
+      app.kubernetes.io/name: zqwf01
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: zqflow
+        app.kubernetes.io/name: zqwf01
     spec:
       containers:
-        - name: zqflow
-          image: zqacr.azurecr.io/image-workflow-1764139189409:latest
+        - name: zqwf01
+          image: zqacr.azurecr.io/image-workflow-1764141968100:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 80
+            - containerPort: 8000
           resources:
             requests:
               cpu: "0.5"
@@ -31,16 +31,16 @@ spec:
               memory: "1Gi"
           envFrom:
             - configMapRef:
-                name: zqflow-config
+                name: zqwf01-config
             - secretRef:
                 name: secret-ref
                 optional: true
           livenessProbe:
             tcpSocket:
-              port: 80
+              port: 8000
           readinessProbe:
             tcpSocket:
-              port: 80
+              port: 8000
             periodSeconds: 5
             timeoutSeconds: 5
             failureThreshold: 1
@@ -48,7 +48,7 @@ spec:
             initialDelaySeconds: 3
           startupProbe:
             tcpSocket:
-              port: 80
+              port: 8000
             periodSeconds: 10
             timeoutSeconds: 1
             failureThreshold: 3
@@ -83,11 +83,11 @@ spec:
               topologyKey: kubernetes.io/hostname
               labelSelector:
                 matchLabels:
-                  app.kubernetes.io/name: zqflow
+                  app.kubernetes.io/name: zqwf01
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
           whenUnsatisfiable: ScheduleAnyway
           labelSelector:
             matchLabels:
-              app.kubernetes.io/name: zqflow
+              app.kubernetes.io/name: zqwf01
