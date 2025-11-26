@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: zqwf01-config
+  namespace: default
+  labels:
+    app.kubernetes.io/name: zqwf01
+    kubernetes.azure.com/generator: devhub
+data:
