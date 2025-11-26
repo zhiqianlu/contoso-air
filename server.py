@@ -33,7 +33,7 @@ def start_server():
         try:
             webbrowser.open(url)
             print(f"🌐 已在浏览器中打开网页")
-        except:
+        except Exception:
             print(f"⚠️  请手动在浏览器中访问: {url}")
         
         try:
