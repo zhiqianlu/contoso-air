@@ -40,7 +40,7 @@ on:
 env:
   ACR_RESOURCE_GROUP: zq-aoai-rg
   AZURE_CONTAINER_REGISTRY: zqacr
-  CONTAINER_NAME: image-workflow-1764141968100
+  CONTAINER_NAME: image-workflow-1764142602063
   CLUSTER_NAME: zq-fleet-mgr
   CLUSTER_RESOURCE_GROUP: zq-fleet-mgr_group
   CLUSTER_RESOURCE_TYPE: microsoft.containerservice/fleets
@@ -48,7 +48,7 @@ env:
     manifests/configmap.yaml
     manifests/deployment.yaml
     manifests/service.yaml
-  DOCKER_FILE: Dockerfile
+  DOCKER_FILE: ./Dockerfile
   BUILD_CONTEXT_PATH: ./
   NAMESPACE: default
   ENABLENAMESPACECREATION: false

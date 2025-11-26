@@ -18,10 +18,10 @@ spec:
     spec:
       containers:
         - name: zqwf01
-          image: zqacr.azurecr.io/image-workflow-1764141968100:latest
+          image: zqacr.azurecr.io/image-workflow-1764142602063:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 8000
+            - containerPort: 80
           resources:
             requests:
               cpu: "0.5"
@@ -37,10 +37,10 @@ spec:
                 optional: true
           livenessProbe:
             tcpSocket:
-              port: 8000
+              port: 80
           readinessProbe:
             tcpSocket:
-              port: 8000
+              port: 80
             periodSeconds: 5
             timeoutSeconds: 5
             failureThreshold: 1
@@ -48,7 +48,7 @@ spec:
             initialDelaySeconds: 3
           startupProbe:
             tcpSocket:
-              port: 8000
+              port: 80
             periodSeconds: 10
             timeoutSeconds: 1
             failureThreshold: 3
