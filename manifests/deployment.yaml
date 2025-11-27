@@ -4,16 +4,16 @@ metadata:
   name: zqwf01
   namespace: zqwf01-ns
   labels:
-    app: zqwf01
+    app.kubernetes.io/name: zqwf01
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: zqwf01
+      app.kubernetes.io/name: zqwf01
   template:
     metadata:
       labels:
-        app: zqwf01
+        app.kubernetes.io/name: zqwf01
     spec:
       containers:
         - name: zqwf01

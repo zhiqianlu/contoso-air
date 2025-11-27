@@ -1,0 +1,15 @@
+# ClusterResourcePlacement - 将工作负载从 Fleet Hub 分发到成员集群
+# 文档: https://learn.microsoft.com/en-us/azure/kubernetes-fleet/concepts-resource-propagation
+
+apiVersion: placement.kubernetes-fleet.io/v1beta1
+kind: ClusterResourcePlacement
+metadata:
+  name: zqwf01-placement
+spec:
+  policy:
+    placementType: PickAll
+  resourceSelectors:
+    - group: ''
+      kind: Namespace
+      name: zqwf01-ns
+      version: v1
