@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: zqwf01
-          image: zqacr.azurecr.io/image-workflow-1764209335618:latest
+          image: zqacr.azurecr.io/image-workflow-1764209937894:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
