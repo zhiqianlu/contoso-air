@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zqwf01
+  namespace: zqwf01-ns
+  labels:
+    app: zqwf01
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zqwf01
+  template:
+    metadata:
+      labels:
+        app: zqwf01
+    spec:
+      containers:
+        - name: zqwf01
+          image: zqacr.azurecr.io/image-workflow-1764142602063:latest
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          envFrom:
+            - configMapRef:
+                name: zqwf01-config

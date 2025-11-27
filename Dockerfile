@@ -10,5 +10,8 @@ COPY server.py index.html ./
 # 暴露端口8000
 EXPOSE 8000
 
+# 设置环境变量，禁用自动打开浏览器
+ENV PYTHONUNBUFFERED=1
+
 # 运行服务器
 CMD ["python", "server.py"]
